@@ -1,0 +1,22 @@
+<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><title>校园失物招领｜单元测试</title><style>body{font-family:system-ui;margin:32px;max-width:760px}li{padding:8px;margin:5px 0;border-radius:8px}.ok{background:#e7f8ec;color:#166534}.fail{background:#feeaea;color:#b91c1c}</style><h1>Store 单元测试</h1><p>直接用浏览器打开本文件即可运行。</p><ul id="results"></ul><script src="../src/js/store.js"></script><script>
+const {createStore,validatePost,statusText}=window.LostFoundStore;
+class MemoryStorage{constructor(){this.data={}}getItem(k){return this.data[k]??null}setItem(k,v){this.data[k]=v}removeItem(k){delete this.data[k]}}
+const out=document.querySelector('#results');let passed=0;
+function test(name,fn){try{fn();passed++;out.insertAdjacentHTML('beforeend','<li class="ok">✓ '+name+'</li>')}catch(e){out.insertAdjacentHTML('beforeend','<li class="fail">✗ '+name+'：'+e.message+'</li>')}}
+function eq(a,b){if(a!==b)throw new Error('期望 '+b+'，得到 '+a)}
+const store=createStore(new MemoryStorage());
+const valid=(name='钥匙')=>({kind:'lost',name,category:'生活用品',location:'宿舍区',place:'7号楼门口',happenedAt:'2026-10-08 20:00',description:'一串带蓝色挂件的钥匙',contact:'13812345678'});
+test('1. 初始数据可集中浏览',()=>eq(store.list().length,3));
+test('2. 可按关键词搜索物品',()=>eq(store.list({keyword:'校园卡'}).length,1));
+test('3. 可按地点筛选',()=>eq(store.list({location:'食堂'}).length,1));
+test('4. 可按寻物/招领类型筛选',()=>eq(store.list({kind:'lost'}).length,1));
+test('5. 缺少必填信息时拒绝发布',()=>eq(validatePost({contact:'13812345678'}).valid,false));
+test('6. 手机号格式错误时拒绝发布',()=>eq(validatePost({...valid(),contact:'123'}).valid,false));
+test('7. 完整信息发布后可按编号读取',()=>{const p=store.add(valid());eq(store.get(p.id).name,'钥匙')});
+test('8. 新发布的信息会排在列表前面',()=>{const p=store.add(valid('水杯'));eq(store.list()[0].id,p.id)});
+test('9. 发布者可更新寻物信息状态',()=>{const p=store.list({keyword:'钥匙'})[0];store.resolve(p.id);eq(statusText(store.get(p.id)),'已找到')});
+test('10. 更新不存在的信息会给出异常',()=>{let f=false;try{store.resolve('not-exist')}catch{f=true}eq(f,true)});
+test('11. 统计信息可正确汇总状态数量',()=>{const s=store.stats();eq(s.total+'/'+s.open+'/'+s.resolved,'5/4/1')});
+test('12. 重置后恢复初始示例数据',()=>{store.reset();eq(store.list().length,3)});
+document.body.insertAdjacentHTML('beforeend','<p><strong>结果：'+passed+'/12 通过</strong></p>');
+</script></html>
